@@ -16,6 +16,19 @@
 | **Swagger UI** | https://kanpur-pothole-backend.onrender.com/docs |
 
 ---
+## 📸 Screenshots
+
+### 🔐 Login Page
+![Login](screenshots/login.png)
+
+### 👑 Admin Dashboard
+![Admin](screenshots/admin.png)
+
+### 👷 Inspector Panel
+![Inspector](screenshots/inspector.png)
+
+### 👤 Citizen Portal
+![Citizen](screenshots/citizen.png)
 
 ## 📋 Project Overview
 
