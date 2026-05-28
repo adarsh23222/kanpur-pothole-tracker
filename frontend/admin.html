@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — Kanpur Pothole Tracker</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .photo-thumb{width:48px;height:48px;border-radius:8px;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;transition:transform 0.2s;}
+    .photo-thumb:hover{transform:scale(1.1);border-color:#1a56db;}
+    .no-photo{color:#9ca3af;font-size:12px;}
+    .photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;}
+    .photo-box-label{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;}
+    .photo-box img{width:100%;height:140px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid #e5e7eb;transition:transform 0.2s;}
+    .photo-box img:hover{transform:scale(1.02);border-color:#1a56db;}
+    .photo-empty{height:140px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;text-align:center;padding:8px;}
+    /* Search */
+    .search-wrap{position:relative;margin-bottom:16px;}
+    .search-wrap input{width:100%;padding:10px 14px 10px 38px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;}
+    .search-wrap input:focus{outline:none;border-color:#1a56db;box-shadow:0 0 0 3px rgba(26,86,219,0.1);}
+    .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;}
+  </style>
+  <!-- Print styles -->
+  <style id="print-styles">
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: fixed; top: 0; left: 0; width: 100%; padding: 40px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="admin.html"><span>🚧</span> Kanpur Pothole Tracker</a>
+  <div class="navbar-right">
+    <span class="user-badge">🏛️ <span id="nav-name"></span></span>
+    <span class="role-badge role-admin" id="nav-role">Admin</span>
+    <button class="btn btn-logout btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner" style="border-color:rgba(26,86,219,0.3);border-top-color:#1a56db;width:36px;height:36px;"></div>
+</div>
+
+<!-- Complaint Detail Modal -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h3>Complaint Details</h3>
+      <button class="btn-close" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-footer" id="detail-footer"></div>
+  </div>
+</div>
+
+<!-- Print Receipt Area (hidden) -->
+<div id="print-area" style="display:none;"></div>
+
+<!-- Assign Modal -->
+<div class="modal-overlay" id="assign-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Assign Inspector</h3>
+      <button class="btn-close" onclick="closeModal('assign-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="assign-alert"></div>
+      <input type="hidden" id="assign-complaint-id"/>
+      <div class="form-group">
+        <label>Complaint</label>
+        <input type="text" id="assign-complaint-display" disabled style="background:#f9fafb;color:#6b7280;"/>
+      </div>
+      <div class="form-group">
+        <label>Inspector *</label>
+        <select id="assign-inspector"><option value="">Select inspector</option></select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="assign-notes" rows="2" placeholder="Special instructions..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('assign-modal')">Cancel</button>
+      <button class="btn btn-warning" onclick="autoAssign()">⚡ Auto-Assign</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="manualAssign()">Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- Status Modal -->
+<div class="modal-overlay" id="status-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Update Status</h3>
+      <button class="btn-close" onclick="closeModal('status-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="status-alert"></div>
+      <input type="hidden" id="status-complaint-id"/>
+      <div class="form-group">
+        <label>Complaint</label>
+        <input type="text" id="status-complaint-display" disabled style="background:#f9fafb;color:#6b7280;"/>
+      </div>
+      <div class="form-group">
+        <label>New Status</label>
+        <select id="new-status">
+          <option value="RESOLVED">✅ Resolved — Road repaired</option>
+          <option value="REJECTED">❌ Rejected — Invalid complaint</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="status-notes" rows="2" placeholder="Reason for this update..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('status-modal')">Cancel</button>
+      <button class="btn btn-success" onclick="updateStatus()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Audit Modal -->
+<div class="modal-overlay" id="audit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Audit Trail</h3>
+      <button class="btn-close" onclick="closeModal('audit-modal')">✕</button>
+    </div>
+    <div class="modal-body"><div id="audit-content"></div></div>
+  </div>
+</div>
+
+<!-- Create Inspector Modal -->
+<div class="modal-overlay" id="inspector-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Create Inspector Account</h3>
+      <button class="btn-close" onclick="closeModal('inspector-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="inspector-alert"></div>
+      <div id="inspector-success-card" style="display:none;">
+        <div class="alert alert-success" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <b>✅ Account Created</b>
+          <p style="font-size:13px;margin:0;">Share these credentials with the inspector.</p>
+        </div>
+        <div style="background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:8px;padding:16px;margin-top:10px;">
+          <table style="width:100%;font-size:13px;">
+            <tr><td style="padding:4px 0;color:#6b7280;width:90px;">Name</td><td id="cred-name" style="font-weight:700;"></td></tr>
+            <tr><td style="padding:4px 0;color:#6b7280;">Username</td><td id="cred-username" style="font-weight:700;color:#1a56db;font-family:monospace;"></td></tr>
+            <tr><td style="padding:4px 0;color:#6b7280;">Email</td><td id="cred-email" style="font-weight:700;color:#1a56db;"></td></tr>
+            <tr><td style="padding:4px 0;color:#6b7280;">Password</td><td id="cred-password" style="font-weight:700;color:#c81e1e;font-family:monospace;"></td></tr>
+            <tr><td style="padding:4px 0;color:#6b7280;">Area</td><td id="cred-area" style="font-weight:700;"></td></tr>
+          </table>
+          <div style="margin-top:12px;padding:8px;background:#fef3c7;border-radius:6px;font-size:12px;color:#92400e;">
+            ⚠️ Save these credentials. The password cannot be retrieved later.
+          </div>
+        </div>
+        <button class="btn btn-outline" style="margin-top:12px;width:100%;" onclick="resetInspectorForm()">Create Another</button>
+      </div>
+      <div id="inspector-form">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="insp-name" placeholder="Inspector's full name"/>
+        </div>
+        <div class="form-group">
+          <label>Username *</label>
+          <input type="text" id="insp-username" placeholder="e.g. rajesh_insp"/>
+        </div>
+        <div class="form-group">
+          <label>Email Address *</label>
+          <input type="email" id="insp-email" placeholder="official@kanpur.gov.in"/>
+        </div>
+        <div class="form-group">
+          <label>Password *</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="insp-password" placeholder="Min. 6 characters" style="flex:1;"/>
+            <button class="btn btn-outline btn-sm" onclick="generatePassword()" style="white-space:nowrap;">Generate</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Assigned Area *</label>
+          <select id="insp-area"><option value="">Select area</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" id="inspector-modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('inspector-modal')">Cancel</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="createInspector()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="alert-box"></div>
+
+  <!-- Admin Profile Card — KNN Logo -->
+  <div style="background:linear-gradient(135deg,#1a56db,#1e429f);border-radius:12px;
+              padding:20px 24px;margin-bottom:24px;color:white;
+              display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <!-- Kanpur Nagar Nigam Logo -->
+      <div style="width:60px;height:60px;background:white;border-radius:12px;
+                  display:flex;align-items:center;justify-content:center;
+                  flex-direction:column;padding:6px;flex-shrink:0;">
+        <div style="font-size:22px;line-height:1;">🏛️</div>
+        <div style="font-size:7px;font-weight:900;color:#1a56db;text-align:center;
+                    line-height:1.2;margin-top:2px;">KANPUR<br>NAGAR NIGAM</div>
+      </div>
+      <div>
+        <div style="font-size:19px;font-weight:800;">Adarsh Pal</div>
+        <div style="font-size:13px;opacity:0.85;">System Administrator — Kanpur Nagar Nigam</div>
+        <div style="font-size:12px;opacity:0.7;margin-top:2px;">
+          adarsh2430343@gmail.com &nbsp;·&nbsp; +91 7080443721
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-success" onclick="downloadCSV()">↓ Export CSV</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><h3 id="s-total">—</h3><p>Total</p></div></div>
+    <div class="stat-card"><div class="stat-icon yellow">⏳</div><div class="stat-info"><h3 id="s-pending">—</h3><p>Pending</p></div></div>
+    <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><h3 id="s-resolved">—</h3><p>Resolved</p></div></div>
+    <div class="stat-card"><div class="stat-icon red">❌</div><div class="stat-info"><h3 id="s-rejected">—</h3><p>Rejected</p></div></div>
+    <div class="stat-card"><div class="stat-icon purple">⏱️</div><div class="stat-info"><h3 id="s-avgdays">—</h3><p>Avg. Resolution</p></div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('complaints')">All Complaints</button>
+    <button class="tab-btn" onclick="switchTab('analytics')">Analytics</button>
+    <button class="tab-btn" onclick="switchTab('inspectors')">Inspectors</button>
+  </div>
+
+  <!-- Complaints Tab -->
+  <div id="tab-complaints">
+    <div class="card">
+      <div class="card-header">
+        <h3>All Complaints</h3>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="filter-status" onchange="applyFilter()"
+                  style="padding:6px 10px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:13px;">
+            <option value="">All Statuses</option>
+            <option>SUBMITTED</option><option>ASSIGNED</option>
+            <option>INSPECTED</option><option>RESOLVED</option><option>REJECTED</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="loadComplaints()">↻</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- Search Bar -->
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input"
+                 placeholder="Search by complaint ID, area, or citizen name..."
+                 oninput="applyFilter()"/>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Photos</th><th>Citizen</th><th>Area</th>
+                <th>Severity</th><th>Status</th><th>Filed</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="complaints-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analytics Tab -->
+  <div id="tab-analytics" style="display:none;">
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><h3>Area-wise Complaints</h3></div><div class="card-body"><div id="area-chart"></div></div></div>
+      <div class="card"><div class="card-header"><h3>Inspector Performance</h3></div><div class="card-body"><div id="inspector-chart"></div></div></div>
+    </div>
+    <div class="card"><div class="card-header"><h3>Monthly Trend</h3></div><div class="card-body"><div id="monthly-chart"></div></div></div>
+  </div>
+
+  <!-- Inspectors Tab -->
+  <div id="tab-inspectors" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <h3>Inspector Accounts</h3>
+        <button class="btn btn-primary btn-sm" style="width:auto;" onclick="openInspectorModal()">+ Create Account</button>
+      </div>
+      <div class="card-body">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Username</th><th>Email</th><th>Area</th><th>Status</th></tr></thead>
+            <tbody id="inspectors-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  requireAuth(["admin"]);
+  setNavUser();
+
+  let allComplaints = [];
+  loadDashboard();
+  loadComplaints();
+  loadInspectors();
+
+  function switchTab(tab) {
+    ["complaints","analytics","inspectors"].forEach(t =>
+      document.getElementById(`tab-${t}`).style.display = t===tab?"block":"none");
+    document.querySelectorAll(".tab-btn").forEach((b,i) =>
+      b.classList.toggle("active",
+        (i===0&&tab==="complaints")||(i===1&&tab==="analytics")||(i===2&&tab==="inspectors")));
+    if(tab==="analytics")  loadAnalytics();
+    if(tab==="inspectors") loadInspectors();
+  }
+
+  async function loadDashboard() {
+    try {
+      const d = await apiCall("/analytics/dashboard");
+      document.getElementById("s-total").textContent    = d.total_complaints;
+      document.getElementById("s-pending").textContent  = d.pending_complaints;
+      document.getElementById("s-resolved").textContent = d.resolved_complaints;
+      document.getElementById("s-rejected").textContent = d.rejected_complaints;
+      document.getElementById("s-avgdays").textContent  = d.avg_resolution_days>0?d.avg_resolution_days+" days":"N/A";
+    } catch(e){}
+  }
+
+  async function loadComplaints() {
+    showLoading(true);
+    try {
+      const data = await apiCall("/complaints/?limit=100");
+      allComplaints = data; renderComplaints(data);
+    } catch(e){ showAlert(e.message,"error"); }
+    finally{ showLoading(false); }
+  }
+
+  // ---- SEARCH + FILTER ----
+  function applyFilter() {
+    const status = document.getElementById("filter-status").value;
+    const search = document.getElementById("search-input").value.trim().toLowerCase();
+
+    let filtered = allComplaints;
+
+    if(status) filtered = filtered.filter(c => c.status === status);
+
+    if(search) {
+      filtered = filtered.filter(c =>
+        String(c.id).includes(search) ||
+        c.area.toLowerCase().includes(search) ||
+        (c.citizen_name && c.citizen_name.toLowerCase().includes(search)) ||
+        c.street_address.toLowerCase().includes(search)
+      );
+    }
+
+    renderComplaints(filtered);
+  }
+
+  function renderComplaints(list) {
+    const tbody = document.getElementById("complaints-table");
+    if(!list.length){
+      tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="icon">📭</div><p>No complaints found.</p></div></td></tr>`; return;
+    }
+    tbody.innerHTML = list.map(c=>`
+      <tr>
+        <td><b>#${c.id}</b></td>
+        <td>
+          <div style="display:flex;gap:4px;align-items:center;">
+            ${c.photo_url?`<img class="photo-thumb" src="${c.photo_url}"
+              onclick="openLightbox('${c.photo_url}','Complaint #${c.id} — Citizen Photo')"
+              onerror="this.style.display='none'" title="Citizen photo"/>`:`<span class="no-photo">—</span>`}
+            ${c.proof_photo_url?`<img class="photo-thumb" src="${c.proof_photo_url}"
+              onclick="openLightbox('${c.proof_photo_url}','Complaint #${c.id} — Inspector Proof')"
+              onerror="this.style.display='none'" title="Inspector proof"
+              style="border-color:#057a55;"/>`:""}
+          </div>
+        </td>
+        <td style="font-size:12px;">${c.citizen_name||"—"}</td>
+        <td>📍 ${c.area}</td>
+        <td>${severityBadge(c.severity)}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td style="font-size:12px;">${formatDate(c.created_at)}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="viewComplaintDetail(${c.id})">View</button>
+            ${c.status==="SUBMITTED"?`<button class="btn btn-warning btn-sm"
+              onclick="openAssignModal(${c.id},'${c.area}','${c.street_address.replace(/'/g,"")}')">Assign</button>`:""}
+            ${c.status==="INSPECTED"?`<button class="btn btn-success btn-sm"
+              onclick="openStatusModal(${c.id},'${c.status}')">Resolve</button>`:""}
+          </div>
+        </td>
+      </tr>`).join("");
+  }
+
+  // ---- COMPLAINT DETAIL + PRINT RECEIPT ----
+  async function viewComplaintDetail(id) {
+    showLoading(true);
+    try {
+      const c = await apiCall(`/complaints/${id}`);
+
+      document.getElementById("detail-body").innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:16px;">
+          <div><span style="color:#6b7280;">ID</span><br><b>#${c.id}</b></div>
+          <div><span style="color:#6b7280;">Status</span><br>${statusBadge(c.status)}</div>
+          <div><span style="color:#6b7280;">Area</span><br><b>📍 ${c.area}</b></div>
+          <div><span style="color:#6b7280;">Severity</span><br>${severityBadge(c.severity)}</div>
+          <div><span style="color:#6b7280;">Filed On</span><br><b>${formatDate(c.created_at)}</b></div>
+          <div><span style="color:#6b7280;">Citizen</span><br><b>${c.citizen_name||"—"}</b></div>
+          ${c.resolved_at?`<div><span style="color:#6b7280;">Resolved</span><br><b>${formatDate(c.resolved_at)}</b></div>`:""}
+        </div>
+        <div style="background:#f9fafb;border-radius:8px;padding:12px;font-size:13px;margin-bottom:12px;">
+          <b>📍 ${c.street_address}</b>
+          ${c.landmark?`<br><span style="color:#6b7280;">${c.landmark}</span>`:""}
+        </div>
+        <div style="background:#f9fafb;border-radius:8px;padding:12px;font-size:13px;margin-bottom:12px;line-height:1.6;">
+          ${c.description}
+        </div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;">📸 Photos</div>
+        <div class="photo-grid">
+          <div class="photo-box">
+            <div class="photo-box-label">Citizen Photo</div>
+            ${c.photo_url
+              ?`<img src="${c.photo_url}" onclick="openLightbox('${c.photo_url}','Citizen complaint photo')"
+                     onerror="this.parentElement.innerHTML='<div class=photo-empty>Unavailable</div>'"/>`
+              :`<div class="photo-empty">No photo</div>`}
+          </div>
+          <div class="photo-box">
+            <div class="photo-box-label">Inspector Proof</div>
+            ${c.proof_photo_url
+              ?`<img src="${c.proof_photo_url}" onclick="openLightbox('${c.proof_photo_url}','Inspector proof photo')"
+                     onerror="this.parentElement.innerHTML='<div class=photo-empty>Unavailable</div>'"/>`
+              :`<div class="photo-empty">${c.status==="RESOLVED"?"Not available":c.status==="INSPECTED"?"Processing":"Pending"}</div>`}
+          </div>
+        </div>
+        ${c.inspector_notes?`
+          <div style="margin-top:14px;padding:14px;background:#ecfdf5;border-radius:8px;
+                      border-left:3px solid #057a55;font-size:13px;">
+            <div style="font-weight:700;color:#065f46;margin-bottom:4px;">Inspector Notes</div>
+            <div>${c.inspector_notes}</div>
+          </div>`:""}`;
+
+      // Store complaint for print
+      window._currentComplaint = c;
+
+      const footer = document.getElementById("detail-footer");
+      footer.innerHTML = `
+        <button class="btn btn-outline" onclick="closeModal('detail-modal')">Close</button>
+        <button class="btn btn-outline" onclick="printReceipt()">🖨️ Print Receipt</button>
+        ${c.status==="SUBMITTED"?`<button class="btn btn-warning"
+          onclick="closeModal('detail-modal');openAssignModal(${c.id},'${c.area}','${c.street_address.replace(/'/g,"")}')">
+          Assign Inspector</button>`:""}
+        ${c.status==="INSPECTED"?`<button class="btn btn-success"
+          onclick="closeModal('detail-modal');openStatusModal(${c.id},'${c.status}')">
+          Resolve</button>`:""}
+        <button class="btn btn-outline" onclick="closeModal('detail-modal');viewAudit(${c.id})">Audit Trail</button>`;
+
+      openModal("detail-modal");
+    } catch(e){ showAlert(e.message,"error"); }
+    finally{ showLoading(false); }
+  }
+
+  // ---- PRINT RECEIPT ----
+  function printReceipt() {
+    const c = window._currentComplaint;
+    if(!c) return;
+
+    document.getElementById("print-area").style.display = "block";
+    document.getElementById("print-area").innerHTML = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:40px;">
+        <!-- Header -->
+        <div style="text-align:center;border-bottom:3px double #1a56db;padding-bottom:20px;margin-bottom:20px;">
+          <div style="font-size:32px;margin-bottom:8px;">🏛️</div>
+          <div style="font-size:20px;font-weight:900;color:#1a56db;">KANPUR NAGAR NIGAM</div>
+          <div style="font-size:14px;color:#6b7280;">Public Works Department</div>
+          <div style="font-size:18px;font-weight:700;margin-top:8px;color:#374151;">
+            POTHOLE COMPLAINT RECEIPT
+          </div>
+        </div>
+
+        <!-- Complaint Info -->
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr style="background:#f3f4f6;">
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;width:35%;">Complaint ID</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;color:#1a56db;">#${c.id}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Status</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${c.status}</td>
+          </tr>
+          <tr style="background:#f3f4f6;">
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Citizen Name</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${c.citizen_name||"—"}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Area</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${c.area}</td>
+          </tr>
+          <tr style="background:#f3f4f6;">
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Address</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${c.street_address}${c.landmark?" ("+c.landmark+")":""}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Severity</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${c.severity}</td>
+          </tr>
+          <tr style="background:#f3f4f6;">
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Filed On</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${formatDate(c.created_at)}</td>
+          </tr>
+          ${c.resolved_at?`<tr>
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Resolved On</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${formatDate(c.resolved_at)}</td>
+          </tr>`:""}
+        </table>
+
+        <div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:6px;font-size:13px;border-left:3px solid #1a56db;">
+          <b>Description:</b><br>${c.description}
+        </div>
+
+        ${c.inspector_notes?`
+        <div style="margin-top:12px;padding:12px;background:#ecfdf5;border-radius:6px;font-size:13px;border-left:3px solid #057a55;">
+          <b>Inspector Notes:</b><br>${c.inspector_notes}
+        </div>`:""}
+
+        <!-- Footer -->
+        <div style="margin-top:32px;text-align:center;font-size:11px;color:#9ca3af;
+                    border-top:1px solid #e5e7eb;padding-top:16px;">
+          Generated on ${new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"long",year:"numeric"})}<br>
+          Kanpur Nagar Nigam — Public Works Department<br>
+          This is a system-generated receipt.
+        </div>
+      </div>`;
+
+    setTimeout(() => {
+      window.print();
+      document.getElementById("print-area").style.display = "none";
+    }, 200);
+  }
+
+  // ---- ASSIGN ----
+  function openAssignModal(id,area,address){
+    document.getElementById("assign-complaint-id").value=id;
+    document.getElementById("assign-complaint-display").value=`#${id} — ${area}`;
+    document.getElementById("assign-notes").value="";
+    document.getElementById("assign-alert").innerHTML="";
+    openModal("assign-modal");
+  }
+  async function manualAssign(){
+    const cid=document.getElementById("assign-complaint-id").value;
+    const iid=document.getElementById("assign-inspector").value;
+    const n=document.getElementById("assign-notes").value.trim();
+    if(!iid){document.getElementById("assign-alert").innerHTML=`<div class="alert alert-error">❌ Please select an inspector.</div>`;return;}
+    showLoading(true);
+    try{
+      await apiCall("/assignments/","POST",{complaint_id:parseInt(cid),inspector_id:parseInt(iid),admin_notes:n||null});
+      closeModal("assign-modal");showAlert(`Complaint #${cid} assigned.`,"success");
+      loadComplaints();loadDashboard();
+    }catch(e){document.getElementById("assign-alert").innerHTML=`<div class="alert alert-error">❌ ${e.message}</div>`;}
+    finally{showLoading(false);}
+  }
+  async function autoAssign(){
+    const cid=document.getElementById("assign-complaint-id").value;
+    showLoading(true);
+    try{
+      await apiCall(`/assignments/auto-assign/${cid}`,"POST");
+      closeModal("assign-modal");showAlert(`Complaint #${cid} auto-assigned.`,"success");
+      loadComplaints();loadDashboard();
+    }catch(e){document.getElementById("assign-alert").innerHTML=`<div class="alert alert-error">❌ ${e.message}</div>`;}
+    finally{showLoading(false);}
+  }
+
+  // ---- STATUS ----
+  function openStatusModal(id,current){
+    document.getElementById("status-complaint-id").value=id;
+    document.getElementById("status-complaint-display").value=`Complaint #${id} — Current: ${current}`;
+    document.getElementById("status-notes").value="";
+    document.getElementById("status-alert").innerHTML="";
+    openModal("status-modal");
+  }
+  async function updateStatus(){
+    const id=document.getElementById("status-complaint-id").value;
+    const st=document.getElementById("new-status").value;
+    const n=document.getElementById("status-notes").value.trim();
+    showLoading(true);
+    try{
+      await apiCall(`/complaints/${id}/status`,"PUT",{status:st,notes:n||null});
+      closeModal("status-modal");showAlert(`Complaint #${id} → ${st}.`,"success");
+      loadComplaints();loadDashboard();
+    }catch(e){document.getElementById("status-alert").innerHTML=`<div class="alert alert-error">❌ ${e.message}</div>`;}
+    finally{showLoading(false);}
+  }
+
+  // ---- INSPECTORS ----
+  async function loadInspectors(){
+    try{
+      const data=await apiCall("/auth/inspectors");
+      document.getElementById("assign-inspector").innerHTML=
+        `<option value="">Select inspector</option>`+
+        data.map(i=>`<option value="${i.id}">${i.full_name} — ${i.area||"No area"}</option>`).join("");
+      const tbody=document.getElementById("inspectors-table");
+      if(!data.length){tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><div class="icon">🔍</div><p>No inspectors found.</p></div></td></tr>`;return;}
+      tbody.innerHTML=data.map(i=>`
+        <tr>
+          <td><b>#${i.id}</b></td>
+          <td>${i.full_name}</td>
+          <td style="font-family:monospace;color:#1a56db;">@${i.username||"—"}</td>
+          <td style="font-size:12px;">${i.email}</td>
+          <td>📍 ${i.area||"—"}</td>
+          <td><span class="badge" style="background:#d1fae5;color:#065f46;">${i.is_active?"Active":"Inactive"}</span></td>
+        </tr>`).join("");
+    }catch(e){showAlert(e.message,"error");}
+  }
+
+  function openInspectorModal(){
+    resetInspectorForm();
+    document.getElementById("insp-area").innerHTML=`<option value="">Select area</option>`+getAreaOptions();
+    openModal("inspector-modal");
+  }
+  function generatePassword(){
+    const c="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#";
+    document.getElementById("insp-password").value=
+      Array.from({length:10},()=>c[Math.floor(Math.random()*c.length)]).join("");
+  }
+  async function createInspector(){
+    const name=document.getElementById("insp-name").value.trim();
+    const uname=document.getElementById("insp-username").value.trim();
+    const email=document.getElementById("insp-email").value.trim();
+    const pass=document.getElementById("insp-password").value.trim();
+    const area=document.getElementById("insp-area").value;
+    if(!name){document.getElementById("inspector-alert").innerHTML=`<div class="alert alert-error">❌ Full name is required.</div>`;return;}
+    if(!uname||uname.length<3){document.getElementById("inspector-alert").innerHTML=`<div class="alert alert-error">❌ Username must be at least 3 characters.</div>`;return;}
+    if(!email){document.getElementById("inspector-alert").innerHTML=`<div class="alert alert-error">❌ Email is required.</div>`;return;}
+    if(pass.length<6){document.getElementById("inspector-alert").innerHTML=`<div class="alert alert-error">❌ Password must be at least 6 characters.</div>`;return;}
+    if(!area){document.getElementById("inspector-alert").innerHTML=`<div class="alert alert-error">❌ Please select an area.</div>`;return;}
+    showLoading(true);
+    try{
+      await apiCall("/auth/register","POST",{full_name:name,username:uname,email,password:pass,role:"inspector",area});
+      document.getElementById("cred-name").textContent=name;
+      document.getElementById("cred-username").textContent="@"+uname;
+      document.getElementById("cred-email").textContent=email;
+      document.getElementById("cred-password").textContent=pass;
+      document.getElementById("cred-area").textContent=area;
+      document.getElementById("inspector-form").style.display="none";
+      document.getElementById("inspector-success-card").style.display="block";
+      document.getElementById("inspector-modal-footer").style.display="none";
+      document.getElementById("inspector-alert").innerHTML="";
+      loadInspectors();
+    }catch(e){document.getElementById("inspector-alert").innerHTML=`<div class="alert alert-error">❌ ${e.message}</div>`;}
+    finally{showLoading(false);}
+  }
+  function resetInspectorForm(){
+    ["insp-name","insp-username","insp-email","insp-password"].forEach(id=>document.getElementById(id).value="");
+    document.getElementById("insp-area").selectedIndex=0;
+    document.getElementById("inspector-form").style.display="block";
+    document.getElementById("inspector-success-card").style.display="none";
+    document.getElementById("inspector-modal-footer").style.display="flex";
+    document.getElementById("inspector-alert").innerHTML="";
+  }
+
+  // ---- ANALYTICS ----
+  async function loadAnalytics(){
+    showLoading(true);
+    try{
+      const d=await apiCall("/analytics/dashboard");
+      renderAreaChart(d.area_wise);renderInspectorChart(d.inspector_wise);renderMonthlyChart(d.monthly_trend);
+    }catch(e){showAlert(e.message,"error");}
+    finally{showLoading(false);}
+  }
+  function renderAreaChart(data){
+    const max=Math.max(...data.map(d=>d.total_count),1);
+    document.getElementById("area-chart").innerHTML=data.map(d=>`
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+          <span>📍 ${d.area}</span><span><b>${d.pending_count}</b> pending / ${d.total_count}</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:99px;height:8px;overflow:hidden;">
+          <div style="height:100%;border-radius:99px;background:#1a56db;width:${(d.total_count/max)*100}%;"></div>
+        </div>
+      </div>`).join("");
+  }
+  function renderInspectorChart(data){
+    if(!data.length){document.getElementById("inspector-chart").innerHTML=`<div class="empty-state"><p>No data available.</p></div>`;return;}
+    const max=Math.max(...data.map(d=>d.inspected_count),1);
+    document.getElementById("inspector-chart").innerHTML=data.map(d=>`
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+          <span>${d.inspector_name}</span><span><b>${d.resolved_count}</b> resolved</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:99px;height:8px;overflow:hidden;">
+          <div style="height:100%;border-radius:99px;background:#057a55;width:${(d.inspected_count/max)*100}%;"></div>
+        </div>
+      </div>`).join("");
+  }
+  function renderMonthlyChart(data){
+    if(!data.length){document.getElementById("monthly-chart").innerHTML=`<div class="empty-state"><p>No data available.</p></div>`;return;}
+    const max=Math.max(...data.map(d=>d.complaint_count),1);
+    document.getElementById("monthly-chart").innerHTML=`
+      <div style="display:flex;gap:8px;align-items:flex-end;padding:16px 0;overflow-x:auto;min-height:160px;">
+        ${data.map(d=>`
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:60px;">
+            <span style="font-size:11px;font-weight:700;color:#1a56db;margin-bottom:4px;">${d.complaint_count}</span>
+            <div style="width:100%;background:#dbeafe;border-radius:6px 6px 0 0;height:${Math.max((d.complaint_count/max)*120,8)}px;position:relative;">
+              <div style="position:absolute;bottom:0;left:0;right:0;background:#057a55;border-radius:6px 6px 0 0;height:${Math.max((d.resolved_count/max)*120,0)}px;"></div>
+            </div>
+            <span style="font-size:10px;color:#6b7280;margin-top:6px;text-align:center;">${d.month_name}</span>
+          </div>`).join("")}
+      </div>
+      <div style="display:flex;gap:16px;font-size:12px;">
+        <span><span style="display:inline-block;width:12px;height:12px;background:#dbeafe;border-radius:2px;margin-right:4px;"></span>Total</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#057a55;border-radius:2px;margin-right:4px;"></span>Resolved</span>
+      </div>`;
+  }
+
+  // ---- AUDIT ----
+  async function viewAudit(id){
+    showLoading(true);
+    try{
+      const logs=await apiCall(`/complaints/${id}/audit-log`);
+      document.getElementById("audit-content").innerHTML=
+        `<h4 style="margin-bottom:16px;color:#1a56db;">Complaint #${id} — Audit Trail</h4>`+
+        (logs.length?logs.map(log=>`
+          <div style="display:flex;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #e5e7eb;">
+            <div style="width:36px;height:36px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">
+              ${log.action.includes("SUBMIT")?"📋":log.action.includes("ASSIGN")?"📌":log.action.includes("INSPECT")?"🔍":log.action.includes("RESOLVE")?"✅":"❌"}
+            </div>
+            <div>
+              <div style="font-weight:600;font-size:13px;">${log.action.replace(/_/g," ")}</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;">${log.changer_name||"System"} · ${formatDate(log.timestamp)}</div>
+              ${log.notes?`<div style="font-size:12px;margin-top:4px;">${log.notes}</div>`:""}
+              ${log.old_status&&log.new_status?`<div style="margin-top:6px;">${statusBadge(log.old_status)} → ${statusBadge(log.new_status)}</div>`:""}
+            </div>
+          </div>`).join("")
+        :`<div class="empty-state"><p>No logs found.</p></div>`);
+      openModal("audit-modal");
+    }catch(e){showAlert(e.message,"error");}
+    finally{showLoading(false);}
+  }
+</script>
+</body>
+</html>

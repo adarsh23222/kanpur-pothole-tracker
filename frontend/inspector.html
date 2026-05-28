@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inspector — Kanpur Pothole Tracker</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .photo-thumb { width:48px;height:48px;border-radius:8px;object-fit:cover;
+      cursor:pointer;border:2px solid #e5e7eb;transition:transform 0.2s; }
+    .photo-thumb:hover { transform:scale(1.1);border-color:#057a55; }
+    .photo-preview-box { display:none;margin-top:10px;border-radius:10px;
+      overflow:hidden;border:2px solid #e5e7eb;max-height:180px; }
+    .photo-preview-box img { width:100%;height:180px;object-fit:cover; }
+    .no-photo { color:#9ca3af;font-size:12px; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="inspector.html"><span>🚧</span> Kanpur Pothole Tracker</a>
+  <div class="navbar-right">
+    <span class="user-badge">🔍 <span id="nav-name"></span></span>
+    <span id="nav-area" style="background:rgba(255,255,255,0.15);padding:4px 10px;
+           border-radius:20px;font-size:12px;font-weight:600;"></span>
+    <span class="role-badge role-inspector" id="nav-role">Inspector</span>
+    <button class="btn btn-logout btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner" style="border-color:rgba(26,86,219,0.3);border-top-color:#1a56db;width:36px;height:36px;"></div>
+</div>
+
+<!-- Visit Update Modal -->
+<div class="modal-overlay" id="update-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Update Site Visit</h3>
+      <button class="btn-close" onclick="closeModal('update-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-alert"></div>
+      <input type="hidden" id="modal-complaint-id"/>
+
+      <!-- Complaint photo shown to inspector -->
+      <div id="complaint-photo-section" style="margin-bottom:16px;"></div>
+
+      <div class="form-group">
+        <label>Complaint Reference</label>
+        <input type="text" id="modal-complaint-display" disabled
+               style="background:#f9fafb;color:#6b7280;"/>
+      </div>
+      <div class="form-group">
+        <label>Site Visit Notes *</label>
+        <textarea id="modal-notes" rows="4"
+          placeholder="Document findings — pothole dimensions, road condition, traffic impact, recommended action...">
+        </textarea>
+      </div>
+      <div class="form-group">
+        <label>Proof Photo</label>
+        <div id="proof-upload-box"></div>
+        <input type="hidden" id="modal-photo"/>
+      </div>
+      </div>
+      <div class="alert alert-info" style="font-size:13px;">
+        Status will change: <b>ASSIGNED → INSPECTED</b>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('update-modal')">Cancel</button>
+      <button class="btn btn-success" onclick="submitInspection()">Mark as Inspected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Audit Modal -->
+<div class="modal-overlay" id="audit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Audit Trail</h3>
+      <button class="btn-close" onclick="closeModal('audit-modal')">✕</button>
+    </div>
+    <div class="modal-body"><div id="audit-content"></div></div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="alert-box"></div>
+
+  <div class="page-header">
+    <h2>Inspector Dashboard</h2>
+    <p>Manage your assigned complaints and site visits.</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon blue">📋</div>
+      <div class="stat-info"><h3 id="stat-total">0</h3><p>Total Assigned</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon yellow">⏳</div>
+      <div class="stat-info"><h3 id="stat-pending">0</h3><p>Pending Visit</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple">🔍</div>
+      <div class="stat-info"><h3 id="stat-inspected">0</h3><p>Inspected</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">✅</div>
+      <div class="stat-info"><h3 id="stat-resolved">0</h3><p>Resolved</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3>Work Queue</h3>
+      <button class="btn btn-outline btn-sm" onclick="loadWork()">↻ Refresh</button>
+    </div>
+    <div class="card-body">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="filterWork('all',event)">All</button>
+        <button class="tab-btn" onclick="filterWork('ASSIGNED',event)">Pending</button>
+        <button class="tab-btn" onclick="filterWork('INSPECTED',event)">Inspected</button>
+        <button class="tab-btn" onclick="filterWork('RESOLVED',event)">Resolved</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Photo</th>
+              <th>Area</th>
+              <th>Address</th>
+              <th>Severity</th>
+              <th>Status</th>
+              <th>Assigned</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="work-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  requireAuth(["inspector"]);
+  setNavUser();
+  // Show inspector area in navbar
+  const _user = getUser();
+  if(_user) {
+    const areaEl = document.getElementById("nav-area");
+    if(areaEl) {
+      apiCall("/auth/me").then(me => {
+        if(me && me.area) areaEl.textContent = "📍 " + me.area;
+      }).catch(()=>{});
+    }
+  }
+
+  let allWork = [];
+  loadWork();
+
+  async function loadWork() {
+    showLoading(true);
+    try {
+      const data = await apiCall("/complaints/");
+      allWork = data; updateStats(data); renderWork(data);
+    } catch(e) { showAlert(e.message,"error"); }
+    finally { showLoading(false); }
+  }
+
+  function updateStats(list) {
+    document.getElementById("stat-total").textContent     = list.length;
+    document.getElementById("stat-pending").textContent   = list.filter(c=>c.status==="ASSIGNED").length;
+    document.getElementById("stat-inspected").textContent = list.filter(c=>c.status==="INSPECTED").length;
+    document.getElementById("stat-resolved").textContent  = list.filter(c=>c.status==="RESOLVED").length;
+  }
+
+  function filterWork(status, e) {
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    if (e&&e.target) e.target.classList.add("active");
+    renderWork(status==="all"?allWork:allWork.filter(c=>c.status===status));
+  }
+
+  function renderWork(list) {
+    const tbody = document.getElementById("work-table");
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+        <div class="icon">🎉</div><p>No complaints in this category.</p>
+      </div></td></tr>`; return;
+    }
+    tbody.innerHTML = list.map(c => `
+      <tr>
+        <td><b>#${c.id}</b></td>
+        <td>
+          ${c.photo_url
+            ? `<img class="photo-thumb" src="${c.photo_url}" alt="Photo"
+                    onclick="openLightbox('${c.photo_url}','Complaint #${c.id} — Citizen Photo')"
+                    onerror="this.style.display='none'"/>`
+            : `<span class="no-photo">—</span>`}
+        </td>
+        <td>📍 ${c.area}</td>
+        <td style="max-width:150px;font-size:12px;">
+          ${c.street_address}
+          ${c.landmark?`<br><span style="color:#9ca3af;">${c.landmark}</span>`:""}
+        </td>
+        <td>${severityBadge(c.severity)}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td>${formatDate(c.created_at)}</td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${c.status==="ASSIGNED"
+              ? `<button class="btn btn-success btn-sm"
+                         onclick="openUpdateModal(${c.id},'${c.photo_url||""}','${c.area}')">
+                   Update Visit
+                 </button>` : ""}
+            <button class="btn btn-outline btn-sm" onclick="viewAudit(${c.id})">
+              Audit
+            </button>
+          </div>
+        </td>
+      </tr>`).join("");
+  }
+
+  function openUpdateModal(id, photoUrl, area) {
+    document.getElementById("modal-complaint-id").value      = id;
+    document.getElementById("modal-complaint-display").value = `Complaint #${id} — ${area}`;
+    document.getElementById("modal-notes").value = "";
+    document.getElementById("modal-photo").value  = "";
+    document.getElementById("modal-alert").innerHTML = "";
+    // Init proof upload box
+    createUploadBox("proof-upload-box", (url) => {
+      document.getElementById("modal-photo").value = url || "";
+    }, "Upload Site Visit Proof Photo");
+
+    // Show citizen's original complaint photo to inspector
+    const photoSection = document.getElementById("complaint-photo-section");
+    photoSection.innerHTML = photoUrl
+      ? `<div style="margin-bottom:4px;">
+           <div style="font-size:11px;font-weight:700;color:#6b7280;
+                       text-transform:uppercase;margin-bottom:6px;">
+             Citizen's Complaint Photo
+           </div>
+           <img src="${photoUrl}" alt="Complaint photo"
+                onclick="openLightbox('${photoUrl}','Citizen complaint photo')"
+                style="width:100%;height:160px;object-fit:cover;border-radius:10px;
+                       cursor:pointer;border:2px solid #e5e7eb;"
+                onerror="this.parentElement.innerHTML='<p style=color:#9ca3af;font-size:12px;>Photo unavailable</p>'"/>
+         </div>`
+      : `<div style="background:#f9fafb;border-radius:8px;padding:12px;
+                     font-size:12px;color:#9ca3af;margin-bottom:4px;">
+           No complaint photo submitted by citizen.
+         </div>`;
+
+    openModal("update-modal");
+  }
+
+  async function submitInspection() {
+    const id    = document.getElementById("modal-complaint-id").value;
+    const notes = document.getElementById("modal-notes").value.trim();
+    const photo = document.getElementById("modal-photo").value.trim();
+
+    if (!notes) {
+      document.getElementById("modal-alert").innerHTML =
+        `<div class="alert alert-error">❌ Site visit notes are required.</div>`; return;
+    }
+
+    showLoading(true);
+    try {
+      await apiCall(`/complaints/${id}/inspect`, "PUT", {
+        inspector_notes: notes, proof_photo_url: photo||null
+      });
+      closeModal("update-modal");
+      showAlert(`Complaint #${id} marked as Inspected.`, "success");
+      loadWork();
+    } catch(e) {
+      document.getElementById("modal-alert").innerHTML =
+        `<div class="alert alert-error">❌ ${e.message}</div>`;
+    } finally { showLoading(false); }
+  }
+
+  async function viewAudit(id) {
+    showLoading(true);
+    try {
+      const logs = await apiCall(`/complaints/${id}/audit-log`);
+      document.getElementById("audit-content").innerHTML =
+        `<h4 style="margin-bottom:16px;color:#1a56db;">Complaint #${id} — Audit Trail</h4>` +
+        (logs.length ? logs.map(log => `
+          <div style="display:flex;gap:12px;margin-bottom:16px;
+                      padding-bottom:16px;border-bottom:1px solid #e5e7eb;">
+            <div style="width:36px;height:36px;border-radius:50%;background:#dbeafe;
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:16px;flex-shrink:0;">
+              ${log.action.includes("SUBMIT")?"📋":log.action.includes("ASSIGN")?"📌":
+                log.action.includes("INSPECT")?"🔍":log.action.includes("RESOLVE")?"✅":"❌"}
+            </div>
+            <div>
+              <div style="font-weight:600;font-size:13px;">${log.action.replace(/_/g," ")}</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;">
+                ${log.changer_name||"System"} · ${formatDate(log.timestamp)}
+              </div>
+              ${log.notes?`<div style="font-size:12px;margin-top:4px;color:#374151;">
+                ${log.notes}</div>`:""}
+              ${log.old_status&&log.new_status
+                ?`<div style="margin-top:6px;">
+                    ${statusBadge(log.old_status)} → ${statusBadge(log.new_status)}
+                  </div>`:""}
+            </div>
+          </div>`).join("")
+        : `<div class="empty-state"><p>No logs found.</p></div>`);
+      openModal("audit-modal");
+    } catch(e) { showAlert(e.message,"error"); }
+    finally { showLoading(false); }
+  }
+</script>
+</body>
+</html>

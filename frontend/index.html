@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — Kanpur Pothole Tracker</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .login-page {
+      min-height:100vh; display:flex; align-items:center;
+      justify-content:center; padding:20px;
+      background:#f0f7f0; position:relative; overflow:hidden;
+    }
+    .login-page::before {
+      content:""; position:absolute; width:500px; height:500px;
+      border-radius:50%; background:rgba(5,122,85,0.08);
+      top:-150px; left:-150px; z-index:0;
+    }
+    .login-page::after {
+      content:""; position:absolute; width:400px; height:400px;
+      border-radius:50%; background:rgba(5,122,85,0.06);
+      bottom:-120px; right:-100px; z-index:0;
+    }
+    .login-card {
+      background:white; border-radius:20px; padding:48px 40px;
+      width:100%; max-width:440px;
+      box-shadow:0 20px 60px rgba(5,122,85,0.12),0 4px 16px rgba(0,0,0,0.06);
+      position:relative; z-index:1; border-top:4px solid #057a55;
+    }
+    .login-logo { text-align:center; margin-bottom:28px; }
+    .gov-badge {
+      display:inline-flex; align-items:center; gap:8px;
+      background:#ecfdf5; border:1.5px solid #6ee7b7;
+      border-radius:30px; padding:6px 16px; font-size:11px;
+      font-weight:700; color:#065f46; text-transform:uppercase;
+      letter-spacing:0.5px; margin-bottom:16px;
+    }
+    .login-logo h1 { font-size:24px; font-weight:800; color:#064e3b; margin-bottom:4px; }
+    .login-logo p  { font-size:13px; color:#6b7280; }
+    .logo-icon-wrap {
+      width:72px; height:72px;
+      background:linear-gradient(135deg,#057a55,#065f46);
+      border-radius:20px; display:flex; align-items:center;
+      justify-content:center; font-size:36px;
+      margin:0 auto 16px;
+      box-shadow:0 8px 24px rgba(5,122,85,0.3);
+    }
+    .tabs { border-bottom-color:#d1fae5; }
+    .tab-btn.active { color:#057a55; border-bottom-color:#057a55; }
+    .form-group input:focus { border-color:#057a55; box-shadow:0 0 0 3px rgba(5,122,85,0.1); }
+    .btn-login {
+      background:linear-gradient(135deg,#057a55,#065f46);
+      color:white; width:100%; justify-content:center;
+      padding:13px; font-size:15px; border-radius:10px;
+      border:none; cursor:pointer; font-weight:700;
+      display:flex; align-items:center; gap:8px;
+      transition:all 0.2s;
+      box-shadow:0 4px 12px rgba(5,122,85,0.3);
+    }
+    .btn-login:hover {
+      background:linear-gradient(135deg,#046c4e,#064e3b);
+      box-shadow:0 6px 16px rgba(5,122,85,0.4);
+      transform:translateY(-1px);
+    }
+    .btn-login:disabled { opacity:0.7; cursor:not-allowed; transform:none; }
+    .link-green { color:#057a55; font-weight:600; text-decoration:none; }
+    .link-green:hover { text-decoration:underline; }
+    .divider {
+      display:flex; align-items:center; gap:12px;
+      margin:20px 0; color:#9ca3af; font-size:12px;
+    }
+    .divider::before,.divider::after {
+      content:""; flex:1; height:1px; background:#e5e7eb;
+    }
+    .login-footer {
+      text-align:center; margin-top:24px; padding-top:20px;
+      border-top:1px solid #f3f4f6; font-size:11px; color:#9ca3af;
+    }
+
+    /* Username availability indicator */
+    .username-status {
+      font-size:12px; margin-top:5px; display:none;
+      display:flex; align-items:center; gap:5px;
+    }
+    .username-status.available { color:#057a55; }
+    .username-status.taken     { color:#c81e1e; }
+    .username-status.checking  { color:#6b7280; }
+
+    @media(max-width:480px){ .login-card { padding:32px 20px; } }
+  </style>
+</head>
+<body>
+
+<div class="login-page">
+  <div class="login-card">
+
+    <div class="login-logo">
+      <div class="gov-badge">🏛️ Kanpur Nagar Nigam</div>
+      <div class="logo-icon-wrap">🚧</div>
+      <h1>Pothole Tracker</h1>
+      <p>Public Works Department — Citizen Portal</p>
+    </div>
+
+    <div id="alert-box"></div>
+
+    <div class="tabs" style="margin-bottom:24px;">
+      <button class="tab-btn active" id="tab-login-btn"
+              onclick="showTab('login')">Sign In</button>
+      <button class="tab-btn" id="tab-signup-btn"
+              onclick="showTab('signup')">Create Account</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <div class="form-group">
+        <label>Username or Email</label>
+        <input type="text" id="login-id" placeholder="Enter username or email"/>
+      </div>
+      <div class="form-group" style="margin-bottom:24px;">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="Enter your password"/>
+      </div>
+      <button class="btn-login" onclick="doLogin()" id="login-btn">
+        🔐 Sign In
+      </button>
+      <div class="divider">or</div>
+      <p style="text-align:center;font-size:13px;color:#6b7280;margin:0;">
+        New citizen?
+        <a href="#" onclick="showTab('signup')" class="link-green">Create a free account</a>
+      </p>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div id="signup-form" style="display:none;">
+      <div class="alert alert-info" style="margin-bottom:18px;font-size:13px;
+           background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;">
+        🏛️ Sign up is available for <b>Citizens</b> only.
+        Inspector accounts are created by the Administrator.
+      </div>
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="signup-name" placeholder="Enter your full name"
+               oninput="suggestUsername()"/>
+      </div>
+
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="signup-username"
+               placeholder="Choose a username (min. 3 characters)"
+               oninput="checkUsernameAvailability()"/>
+        <div class="username-status" id="username-status"></div>
+      </div>
+
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="signup-email" placeholder="Enter your email address"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="Minimum 6 characters"/>
+      </div>
+      <div class="form-group" style="margin-bottom:24px;">
+        <label>Confirm Password</label>
+        <input type="password" id="signup-confirm" placeholder="Re-enter your password"/>
+      </div>
+
+      <button class="btn-login" onclick="doSignup()" id="signup-btn">
+        ✅ Create Account
+      </button>
+      <div class="divider">or</div>
+      <p style="text-align:center;font-size:13px;color:#6b7280;margin:0;">
+        Already have an account?
+        <a href="#" onclick="showTab('login')" class="link-green">Sign in here</a>
+      </p>
+    </div>
+
+    <div class="login-footer">
+      © 2026 Kanpur Nagar Nigam · Public Works Department<br>
+      Developed by Adarsh Pal
+    </div>
+
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"
+       style="border-color:rgba(5,122,85,0.2);border-top-color:#057a55;
+              width:40px;height:40px;"></div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    const user = getUser();
+    if (user && getToken()) redirectByRole(user.role);
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const isLogin = document.getElementById("login-form").style.display !== "none";
+    isLogin ? doLogin() : doSignup();
+  });
+
+  function showTab(tab) {
+    document.getElementById("login-form").style.display  = tab==="login"  ? "block":"none";
+    document.getElementById("signup-form").style.display = tab==="signup" ? "block":"none";
+    document.getElementById("tab-login-btn").classList.toggle("active", tab==="login");
+    document.getElementById("tab-signup-btn").classList.toggle("active", tab==="signup");
+    document.getElementById("alert-box").innerHTML = "";
+  }
+
+  // ---- USERNAME SUGGESTION ----
+  function suggestUsername() {
+    const name = document.getElementById("signup-name").value.trim();
+    if (!name) return;
+    const suggested = name.toLowerCase()
+      .replace(/\s+/g,"_")
+      .replace(/[^a-z0-9_]/g,"")
+      .substring(0,15);
+    document.getElementById("signup-username").value = suggested;
+    checkUsernameAvailability();
+  }
+
+  // ---- USERNAME AVAILABILITY CHECK ----
+  let usernameTimer = null;
+  let usernameAvailable = false;
+
+  function checkUsernameAvailability() {
+    const username = document.getElementById("signup-username").value.trim();
+    const statusEl = document.getElementById("username-status");
+
+    if (!username || username.length < 3) {
+      statusEl.style.display = "none";
+      usernameAvailable = false;
+      return;
+    }
+
+    statusEl.style.display = "flex";
+    statusEl.className     = "username-status checking";
+    statusEl.textContent   = "⏳ Checking...";
+
+    clearTimeout(usernameTimer);
+    usernameTimer = setTimeout(async () => {
+      try {
+        const data = await apiCall(`/auth/check-username/${username}`);
+        usernameAvailable = data.available;
+        statusEl.className   = `username-status ${data.available?"available":"taken"}`;
+        statusEl.textContent = data.available
+          ? `✅ ${data.message}`
+          : `❌ ${data.message}`;
+      } catch(e) {
+        statusEl.style.display = "none";
+      }
+    }, 500); // 500ms debounce — wait for user to stop typing
+  }
+
+  // ---- LOGIN ----
+  async function doLogin() {
+    const loginId  = document.getElementById("login-id").value.trim();
+    const password = document.getElementById("login-password").value.trim();
+
+    if (!loginId || !password) {
+      showAlert("Please enter your username/email and password.", "error"); return;
+    }
+
+    const btn = document.getElementById("login-btn");
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span> Signing in...`;
+    showLoading(true);
+
+    try {
+      const data = await apiCall("/auth/login","POST",{login:loginId,password});
+      saveAuth(data);
+      setTimeout(() => redirectByRole(data.role), 500);
+    } catch(err) {
+      showAlert(err.message||"Invalid credentials. Please try again.","error");
+      btn.disabled = false;
+      btn.innerHTML = `🔐 Sign In`;
+    } finally { showLoading(false); }
+  }
+
+  // ---- SIGNUP ----
+  async function doSignup() {
+    const name     = document.getElementById("signup-name").value.trim();
+    const username = document.getElementById("signup-username").value.trim();
+    const email    = document.getElementById("signup-email").value.trim();
+    const password = document.getElementById("signup-password").value.trim();
+    const confirm  = document.getElementById("signup-confirm").value.trim();
+
+    if (!name)              { showAlert("Please enter your full name.","error"); return; }
+    if (username.length<3)  { showAlert("Username must be at least 3 characters.","error"); return; }
+    if (!usernameAvailable) { showAlert("Please choose an available username.","error"); return; }
+    if (!email)             { showAlert("Please enter your email address.","error"); return; }
+    if (password.length<6)  { showAlert("Password must be at least 6 characters.","error"); return; }
+    if (password!==confirm) { showAlert("Passwords do not match.","error"); return; }
+
+    const btn = document.getElementById("signup-btn");
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span> Creating account...`;
+    showLoading(true);
+
+    try {
+      await apiCall("/auth/register","POST",{
+        full_name:name, username, email, password, role:"citizen"
+      });
+      showAlert(`Account created! You can now sign in as @${username}`,"success");
+      ["signup-name","signup-email","signup-password","signup-confirm","signup-username"]
+        .forEach(id => document.getElementById(id).value="");
+      document.getElementById("username-status").style.display = "none";
+      setTimeout(() => showTab("login"), 1500);
+    } catch(err) {
+      showAlert(err.message||"Registration failed. Please try again.","error");
+    } finally {
+      showLoading(false);
+      btn.disabled = false;
+      btn.innerHTML = `✅ Create Account`;
+    }
+  }
+
+  function redirectByRole(role) {
+    const pages = {admin:"admin.html",inspector:"inspector.html",citizen:"citizen.html"};
+    window.location.href = pages[role]||"index.html";
+  }
+</script>
+</body>
+</html>

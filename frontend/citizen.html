@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — Kanpur Pothole Tracker</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: fixed; top: 0; left: 0; width: 100%; padding: 40px; }
+    }
+    .photo-thumb {
+      width: 48px; height: 48px; border-radius: 8px; object-fit: cover;
+      cursor: pointer; border: 2px solid #e5e7eb; transition: transform 0.2s;
+    }
+    .photo-thumb:hover { transform: scale(1.1); border-color: #057a55; }
+    .no-photo { color: #9ca3af; font-size: 12px; }
+    .status-timeline {
+      display: flex; align-items: center; gap: 0;
+      margin: 16px 0; font-size: 11px;
+    }
+    .timeline-step {
+      display: flex; flex-direction: column; align-items: center;
+      flex: 1; position: relative;
+    }
+    .timeline-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; z-index: 1;
+    }
+    .timeline-dot.done { background: #057a55; color: white; }
+    .timeline-dot.active { background: #1a56db; color: white; }
+    .timeline-dot.pending { background: #e5e7eb; color: #9ca3af; }
+    .timeline-label { margin-top: 4px; font-weight: 600; color: #6b7280; text-align: center; }
+    .timeline-label.active { color: #1a56db; }
+    .timeline-label.done { color: #057a55; }
+    .timeline-line {
+      position: absolute; top: 14px; left: 50%; width: 100%;
+      height: 2px; background: #e5e7eb; z-index: 0;
+    }
+    .timeline-line.done { background: #057a55; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="citizen.html"><span>🚧</span> Kanpur Pothole Tracker</a>
+  <div class="navbar-right">
+    <span class="user-badge">👤 <span id="nav-name"></span></span>
+    <span class="role-badge role-citizen" id="nav-role">Citizen</span>
+    <button class="btn btn-logout btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner" style="border-color:rgba(26,86,219,0.3);border-top-color:#1a56db;width:36px;height:36px;"></div>
+</div>
+
+<!-- Print Area -->
+<div id="print-area" style="display:none;"></div>
+
+<!-- Complaint Detail Modal -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <h3>Complaint Details</h3>
+      <button class="btn-close" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('detail-modal')">Close</button>
+      <button class="btn btn-outline" onclick="printReceipt()">🖨️ Print Receipt</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="alert-box"></div>
+
+  <div class="page-header">
+    <h2>My Dashboard</h2>
+    <p>Track and manage your road complaints.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon blue">📋</div>
+      <div class="stat-info"><h3 id="stat-total">0</h3><p>Total</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon yellow">⏳</div>
+      <div class="stat-info"><h3 id="stat-pending">0</h3><p>Pending</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple">🔍</div>
+      <div class="stat-info"><h3 id="stat-inspected">0</h3><p>Under Inspection</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">✅</div>
+      <div class="stat-info"><h3 id="stat-resolved">0</h3><p>Resolved</p></div>
+    </div>
+  </div>
+
+  <!-- Main Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('list')">My Complaints</button>
+    <button class="tab-btn" onclick="switchTab('new')">New Complaint</button>
+  </div>
+
+  <!-- TAB: Complaints List -->
+  <div id="tab-list">
+    <div class="card">
+      <div class="card-header">
+        <h3>My Complaints</h3>
+        <button class="btn btn-outline btn-sm" onclick="loadComplaints()">↻ Refresh</button>
+      </div>
+      <div class="card-body">
+
+        <!-- Status Filter Tabs -->
+        <div class="tabs" style="margin-bottom:16px;">
+          <button class="tab-btn active" onclick="filterByStatus('all', event)">All</button>
+          <button class="tab-btn" onclick="filterByStatus('SUBMITTED', event)">Submitted</button>
+          <button class="tab-btn" onclick="filterByStatus('ASSIGNED', event)">Assigned</button>
+          <button class="tab-btn" onclick="filterByStatus('INSPECTED', event)">Inspected</button>
+          <button class="tab-btn" onclick="filterByStatus('RESOLVED', event)">✅ Resolved</button>
+          <button class="tab-btn" onclick="filterByStatus('REJECTED', event)">❌ Rejected</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Photo</th>
+                <th>Area</th>
+                <th>Description</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Filed On</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="complaints-table">
+              <tr><td colspan="8" class="text-center" style="padding:32px;color:#6b7280;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: New Complaint -->
+  <div id="tab-new" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h3>File a New Complaint</h3></div>
+      <div class="card-body">
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Area *</label>
+            <select id="c-area"><option value="">Select area</option></select>
+          </div>
+          <div class="form-group">
+            <label>Severity *</label>
+            <select id="c-severity">
+              <option value="LOW">Low — Minor pothole</option>
+              <option value="MEDIUM" selected>Medium — Significant pothole</option>
+              <option value="HIGH">High — Dangerous pothole</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Street Address *</label>
+          <input type="text" id="c-address" placeholder="e.g. Near Phoolbagh Chauraha, GT Road"/>
+        </div>
+        <div class="form-group">
+          <label>Landmark</label>
+          <input type="text" id="c-landmark" placeholder="e.g. Opposite SBI Bank"/>
+        </div>
+        <div class="form-group">
+          <label>Description * <span style="color:#9ca3af;font-weight:400;">(min. 20 characters)</span></label>
+          <textarea id="c-desc" placeholder="Describe the pothole — size, depth, duration, impact..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Complaint Photo</label>
+          <div id="complaint-upload"></div>
+          <input type="hidden" id="c-photo"/>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button class="btn btn-primary" style="width:auto;padding:10px 28px;"
+                  onclick="submitComplaint()">Submit Complaint</button>
+          <button class="btn btn-outline" onclick="switchTab('list')">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  requireAuth(["citizen"]);
+  setNavUser();
+
+  // Area dropdown
+  document.getElementById("c-area").innerHTML =
+    `<option value="">Select area</option>` + getAreaOptions();
+
+  // Upload box
+  createUploadBox("complaint-upload", (url) => {
+    document.getElementById("c-photo").value = url || "";
+  }, "Upload Complaint Photo");
+
+  let allComplaints = [];
+  loadComplaints();
+
+  // ---- TAB SWITCHING ----
+  function switchTab(tab) {
+    document.getElementById("tab-list").style.display = tab === "list" ? "block" : "none";
+    document.getElementById("tab-new").style.display  = tab === "new"  ? "block" : "none";
+    document.querySelectorAll(".tabs:first-of-type .tab-btn").forEach((b, i) =>
+      b.classList.toggle("active", (i===0&&tab==="list")||(i===1&&tab==="new")));
+  }
+
+  // ---- STATUS FILTER ----
+  function filterByStatus(status, e) {
+    // Update filter tab buttons
+    document.querySelectorAll("#tab-list .tab-btn").forEach(b => b.classList.remove("active"));
+    if (e && e.target) e.target.classList.add("active");
+
+    const filtered = status === "all"
+      ? allComplaints
+      : allComplaints.filter(c => c.status === status);
+    renderComplaints(filtered);
+  }
+
+  // ---- LOAD COMPLAINTS ----
+  async function loadComplaints() {
+    showLoading(true);
+    try {
+      const data = await apiCall("/complaints/");
+      allComplaints = data;
+      updateStats(data);
+      renderComplaints(data);
+    } catch(e) {
+      showAlert(e.message, "error");
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function updateStats(list) {
+    document.getElementById("stat-total").textContent     = list.length;
+    document.getElementById("stat-pending").textContent   = list.filter(c => ["SUBMITTED","ASSIGNED"].includes(c.status)).length;
+    document.getElementById("stat-inspected").textContent = list.filter(c => c.status === "INSPECTED").length;
+    document.getElementById("stat-resolved").textContent  = list.filter(c => c.status === "RESOLVED").length;
+  }
+
+  function renderComplaints(list) {
+    const tbody = document.getElementById("complaints-table");
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+        <div class="icon">📭</div>
+        <p>No complaints in this category.</p>
+      </div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(c => `
+      <tr>
+        <td><b>#${c.id}</b></td>
+        <td>
+          ${c.photo_url
+            ? `<img class="photo-thumb" src="${c.photo_url}"
+                    onclick="openLightbox('${c.photo_url}','Complaint #${c.id}')"
+                    onerror="this.style.display='none'"/>`
+            : `<span class="no-photo">—</span>`}
+        </td>
+        <td>📍 ${c.area}</td>
+        <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+            title="${c.description}">${c.description}</td>
+        <td>${severityBadge(c.severity)}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td>${formatDate(c.created_at)}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="viewDetail(${c.id})">View</button>
+        </td>
+      </tr>`).join("");
+  }
+
+  // ---- VIEW DETAIL ----
+  async function viewDetail(id) {
+    showLoading(true);
+    try {
+      const c = await apiCall(`/complaints/${id}`);
+      window._currentComplaint = c;
+
+      // Status timeline
+      const stages = ["SUBMITTED","ASSIGNED","INSPECTED","RESOLVED"];
+      const currentIdx = stages.indexOf(c.status === "REJECTED" ? "SUBMITTED" : c.status);
+      const labels = ["Submitted","Assigned","Inspected","Resolved"];
+      const icons  = ["📋","📌","🔍","✅"];
+
+      const timeline = `
+        <div class="status-timeline">
+          ${stages.map((s, i) => `
+            <div class="timeline-step">
+              ${i < stages.length - 1 ? `<div class="timeline-line ${i < currentIdx ? 'done' : ''}"></div>` : ""}
+              <div class="timeline-dot ${i < currentIdx ? 'done' : i === currentIdx ? 'active' : 'pending'}">
+                ${icons[i]}
+              </div>
+              <div class="timeline-label ${i < currentIdx ? 'done' : i === currentIdx ? 'active' : ''}">
+                ${labels[i]}
+              </div>
+            </div>`).join("")}
+        </div>
+        ${c.status === "REJECTED"
+          ? `<div style="background:#fee2e2;border-radius:8px;padding:10px 14px;
+                         font-size:13px;color:#991b1b;margin-bottom:12px;">
+               ❌ This complaint was rejected.
+             </div>` : ""}
+      `;
+
+      // Photos section — changes based on status
+      let photosHtml = "";
+
+      if (c.status === "SUBMITTED" || c.status === "ASSIGNED") {
+        // Only citizen photo visible
+        photosHtml = `
+          <div style="font-weight:700;font-size:13px;margin-bottom:10px;">📸 Your Photo</div>
+          ${c.photo_url
+            ? `<img src="${c.photo_url}"
+                    onclick="openLightbox('${c.photo_url}','Your complaint photo')"
+                    style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;
+                           cursor:pointer;border:2px solid #e5e7eb;"
+                    onerror="this.style.display='none'"/>`
+            : `<div style="height:120px;background:#f3f4f6;border-radius:10px;
+                           display:flex;align-items:center;justify-content:center;
+                           color:#9ca3af;font-size:13px;">No photo uploaded</div>`}
+          <div style="margin-top:10px;padding:10px 14px;background:#fef3c7;border-radius:8px;
+                      font-size:12px;color:#92400e;">
+            ⏳ Your complaint has been ${c.status === "SUBMITTED" ? "received and is awaiting assignment." : "assigned to an inspector for site visit."}
+          </div>`;
+
+      } else if (c.status === "INSPECTED") {
+        // Both photos — inspector visited
+        photosHtml = `
+          <div style="font-weight:700;font-size:13px;margin-bottom:10px;">📸 Photos</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;">Your Photo</div>
+              ${c.photo_url
+                ? `<img src="${c.photo_url}" onclick="openLightbox('${c.photo_url}','Your complaint photo')"
+                        style="width:100%;height:130px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid #e5e7eb;"
+                        onerror="this.parentElement.innerHTML='<p style=color:#9ca3af;font-size:12px;>Unavailable</p>'"/>`
+                : `<div style="height:130px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;">No photo</div>`}
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;">Inspector Proof</div>
+              ${c.proof_photo_url
+                ? `<img src="${c.proof_photo_url}" onclick="openLightbox('${c.proof_photo_url}','Inspector proof photo')"
+                        style="width:100%;height:130px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid #057a55;"
+                        onerror="this.parentElement.innerHTML='<p style=color:#9ca3af;font-size:12px;>Unavailable</p>'"/>`
+                : `<div style="height:130px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;">Pending</div>`}
+            </div>
+          </div>
+          <div style="margin-top:10px;padding:10px 14px;background:#ede9fe;border-radius:8px;font-size:12px;color:#5b21b6;">
+            🔍 Site inspection complete. Awaiting resolution from admin.
+          </div>
+          ${c.inspector_notes ? `
+            <div style="margin-top:10px;padding:12px;background:#ecfdf5;border-radius:8px;border-left:3px solid #057a55;font-size:13px;">
+              <b style="color:#065f46;">Inspector Notes</b><br>
+              <span style="color:#374151;">${c.inspector_notes}</span>
+            </div>` : ""}`;
+
+      } else if (c.status === "RESOLVED") {
+        // Both photos + resolved message
+        photosHtml = `
+          <div style="font-weight:700;font-size:13px;margin-bottom:10px;">📸 Photos</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;">Before (Your Photo)</div>
+              ${c.photo_url
+                ? `<img src="${c.photo_url}" onclick="openLightbox('${c.photo_url}','Before — Your complaint photo')"
+                        style="width:100%;height:130px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid #e5e7eb;"
+                        onerror="this.parentElement.innerHTML='<p style=color:#9ca3af;font-size:12px;>Unavailable</p>'"/>`
+                : `<div style="height:130px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;">No photo</div>`}
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#057a55;text-transform:uppercase;margin-bottom:6px;">After (Inspector Proof)</div>
+              ${c.proof_photo_url
+                ? `<img src="${c.proof_photo_url}" onclick="openLightbox('${c.proof_photo_url}','After — Inspector proof photo')"
+                        style="width:100%;height:130px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid #057a55;"
+                        onerror="this.parentElement.innerHTML='<p style=color:#9ca3af;font-size:12px;>Unavailable</p>'"/>`
+                : `<div style="height:130px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;">Not available</div>`}
+            </div>
+          </div>
+          <div style="margin-top:10px;padding:12px 16px;background:#d1fae5;border-radius:8px;
+                      font-size:13px;color:#065f46;font-weight:600;text-align:center;">
+            ✅ This complaint has been resolved. Thank you for reporting!
+          </div>
+          ${c.resolved_at ? `<div style="font-size:12px;color:#6b7280;text-align:center;margin-top:6px;">Resolved on ${formatDate(c.resolved_at)}</div>` : ""}`;
+      }
+
+      document.getElementById("detail-body").innerHTML = `
+        <!-- Timeline -->
+        ${timeline}
+
+        <!-- Basic Info -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:14px;">
+          <div><span style="color:#6b7280;">Complaint ID</span><br><b>#${c.id}</b></div>
+          <div><span style="color:#6b7280;">Severity</span><br>${severityBadge(c.severity)}</div>
+          <div><span style="color:#6b7280;">Area</span><br><b>📍 ${c.area}</b></div>
+          <div><span style="color:#6b7280;">Filed On</span><br><b>${formatDate(c.created_at)}</b></div>
+        </div>
+
+        <div style="background:#f9fafb;border-radius:8px;padding:12px;font-size:13px;margin-bottom:14px;">
+          <b>${c.street_address}</b>
+          ${c.landmark ? `<br><span style="color:#6b7280;">${c.landmark}</span>` : ""}
+        </div>
+
+        <div style="background:#f9fafb;border-radius:8px;padding:12px;font-size:13px;
+                    line-height:1.6;margin-bottom:14px;">${c.description}</div>
+
+        <!-- Photos -->
+        ${photosHtml}
+      `;
+
+      openModal("detail-modal");
+    } catch(e) {
+      showAlert(e.message, "error");
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  // ---- PRINT RECEIPT ----
+  function printReceipt() {
+    const c = window._currentComplaint;
+    if (!c) { showAlert("Please open a complaint first.", "error"); return; }
+
+    document.getElementById("print-area").style.display = "block";
+    document.getElementById("print-area").innerHTML = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:40px;">
+        <div style="text-align:center;border-bottom:3px double #057a55;padding-bottom:20px;margin-bottom:20px;">
+          <div style="font-size:32px;">🏛️</div>
+          <div style="font-size:20px;font-weight:900;color:#057a55;">KANPUR NAGAR NIGAM</div>
+          <div style="font-size:13px;color:#6b7280;">Public Works Department</div>
+          <div style="font-size:17px;font-weight:700;margin-top:8px;">COMPLAINT ACKNOWLEDGEMENT RECEIPT</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr style="background:#f3f4f6;">
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;width:40%;">Complaint ID</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;color:#057a55;">#${c.id}</td>
+          </tr>
+          <tr><td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Status</td>
+              <td style="padding:10px;border:1px solid #e5e7eb;">${c.status}</td></tr>
+          <tr style="background:#f3f4f6;">
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Area</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${c.area}</td></tr>
+          <tr><td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Address</td>
+              <td style="padding:10px;border:1px solid #e5e7eb;">${c.street_address}${c.landmark?" ("+c.landmark+")":""}</td></tr>
+          <tr style="background:#f3f4f6;">
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Severity</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${c.severity}</td></tr>
+          <tr><td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Filed On</td>
+              <td style="padding:10px;border:1px solid #e5e7eb;">${formatDate(c.created_at)}</td></tr>
+          ${c.resolved_at ? `<tr style="background:#f3f4f6;">
+            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:700;">Resolved On</td>
+            <td style="padding:10px;border:1px solid #e5e7eb;">${formatDate(c.resolved_at)}</td></tr>` : ""}
+        </table>
+        <div style="margin-top:14px;padding:12px;background:#f9fafb;border-radius:6px;
+                    font-size:13px;border-left:3px solid #057a55;line-height:1.6;">
+          <b>Description:</b><br>${c.description}
+        </div>
+        <div style="margin-top:32px;text-align:center;font-size:11px;color:#9ca3af;
+                    border-top:1px solid #e5e7eb;padding-top:16px;">
+          Generated on ${new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"long",year:"numeric"})}<br>
+          Kanpur Nagar Nigam — Public Works Department<br>
+          System-generated receipt. Keep for your records.
+        </div>
+      </div>`;
+    setTimeout(() => {
+      window.print();
+      document.getElementById("print-area").style.display = "none";
+    }, 200);
+  }
+
+  // ---- SUBMIT COMPLAINT ----
+  async function submitComplaint() {
+    const area     = document.getElementById("c-area").value;
+    const address  = document.getElementById("c-address").value.trim();
+    const desc     = document.getElementById("c-desc").value.trim();
+    const sev      = document.getElementById("c-severity").value;
+    const landmark = document.getElementById("c-landmark").value.trim();
+    const photo    = document.getElementById("c-photo").value.trim();
+
+    if (!area)            { showAlert("Please select an area.", "error"); return; }
+    if (!address)         { showAlert("Please enter the street address.", "error"); return; }
+    if (desc.length < 20) { showAlert("Description must be at least 20 characters.", "error"); return; }
+
+    showLoading(true);
+    try {
+      await apiCall("/complaints/", "POST", {
+        area, street_address: address, description: desc,
+        severity: sev, landmark: landmark || null,
+        photo_url: photo || null
+      });
+      showAlert("Complaint submitted successfully.", "success");
+      ["c-address","c-desc","c-landmark"].forEach(id =>
+        document.getElementById(id).value = "");
+      document.getElementById("c-area").selectedIndex = 0;
+      resetUploadBox("complaint-upload");
+      switchTab("list");
+      loadComplaints();
+    } catch(e) {
+      showAlert(e.message, "error");
+    } finally {
+      showLoading(false);
+    }
+  }
+</script>
+</body>
+</html>
