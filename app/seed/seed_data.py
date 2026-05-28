@@ -85,7 +85,7 @@ def seed_users(db: Session):
         # ---- ADMIN ----
         User(
             full_name="Adarsh Pal",
-            email="adarsh2430343@gmail.com",
+            email="admin@kanpurnagarnigam.in",
             username="adarsh_admin",
             hashed_password=hash_password("admin123"),
             role=UserRole.ADMIN,
@@ -623,7 +623,7 @@ def main():
         print("✅ SEEDING COMPLETE!")
         print("=" * 60)
         print("\n📧 LOGIN CREDENTIALS:")
-        print("  ADMIN:    adarsh2430343@gmail.com     / admin123")
+        print("  ADMIN:    admin@kanpurnagarnigam.in   / admin123")
         print("  INSPECTOR: username: rajesh_insp         / inspector123")
         print("  INSPECTOR: sunil.inspector@kanpur.gov.in  / inspector123")
         print("  INSPECTOR: meena.inspector@kanpur.gov.in  / inspector123")
