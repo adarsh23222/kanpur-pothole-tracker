@@ -2,8 +2,18 @@
 ### Civic Complaint Management System — BCA Final Year Project
 
 > **Developed by:** Adarsh Pal | BCA Final Year  
-> **College:** PSIT College Of Higher Education  Kanpur
+> **College:** PSIT College Of Higher Education, Kanpur  
 > **Tech Stack:** FastAPI + PostgreSQL + SQLAlchemy + JWT
+
+---
+
+## 🌐 Live Demo
+
+| | URL |
+|--|--|
+| **Frontend** | https://kanpur-pothole-tracker.vercel.app |
+| **Backend API** | https://kanpur-pothole-backend.onrender.com |
+| **Swagger UI** | https://kanpur-pothole-backend.onrender.com/docs |
 
 ---
 
@@ -16,9 +26,22 @@ Kanpur Nagar Nigam ke liye ek pothole complaint management system jisme:
 
 ---
 
-## ⚙️ SETUP GUIDE (Step by Step)
+## 🔑 Login Credentials
 
-### Step 1: Prerequisites Install Karo
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | adarsh2430343@gmail.com | admin123 |
+| Inspector | rajesh.inspector@kanpur.gov.in | inspector123 |
+| Inspector | sunil.inspector@kanpur.gov.in | inspector123 |
+| Inspector | meena.inspector@kanpur.gov.in | inspector123 |
+| Citizen | priya.singh@gmail.com | citizen123 |
+| Citizen | ramesh.mishra@yahoo.com | citizen123 |
+
+---
+
+## ⚙️ Local Setup Guide
+
+### Step 1: Prerequisites
 ```bash
 # Python 3.11+ required
 python --version
@@ -28,17 +51,16 @@ python --version
 # Ubuntu: sudo apt install postgresql
 ```
 
-### Step 2: Project Clone / Extract Karo
+### Step 2: Project Clone Karo
 ```bash
+git clone https://github.com/adarsh23222/kanpur-pothole-tracker
 cd kanpur_pothole_tracker
 ```
 
 ### Step 3: Virtual Environment Banao
 ```bash
-# Virtual environment create karo
 python -m venv venv
 
-# Activate karo
 # Windows:
 venv\Scripts\activate
 # Mac/Linux:
@@ -52,26 +74,25 @@ pip install -r requirements.txt
 
 ### Step 5: PostgreSQL Database Banao
 ```sql
--- pgAdmin ya psql mein yeh run karo:
 CREATE DATABASE kanpur_pothole_db;
 ```
 
 ### Step 6: .env File Configure Karo
 ```bash
-# .env file mein apna PostgreSQL password daalo:
 DATABASE_URL=postgresql://postgres:YOURPASSWORD@localhost:5432/kanpur_pothole_db
+SECRET_KEY=your_secret_key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-### Step 7: Database Seed Karo (Tables + Data)
+### Step 7: Database Seed Karo
 ```bash
 python -m app.seed.seed_data
 ```
 Expected output:
-```
 ✅ 9 users created
-✅ 27 complaints created  
+✅ 27 complaints created
 ✅ 5 RESOLVED, 5 INSPECTED, 8 ASSIGNED
-```
 
 ### Step 8: Server Start Karo
 ```bash
@@ -79,22 +100,7 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 ### Step 9: Swagger UI Open Karo
-```
-https://kanpur-pothole-backend.onrender.com/docs
-```
-
----
-
-## 🔑 Login Credentials (After Seeding)
-
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | adarsh2430343@gmail.com | admin123 |
-| Inspector | rajesh.inspector@kanpur.gov.in | inspector123 |
-| Inspector | sunil.inspector@kanpur.gov.in | inspector123 |
-| Inspector | meena.inspector@kanpur.gov.in | inspector123 |
-| Citizen | priya.singh@gmail.com | citizen123 |
-| Citizen | ramesh.mishra@yahoo.com | citizen123 |
+http://localhost:8000/docs
 
 ---
 
@@ -138,15 +144,12 @@ https://kanpur-pothole-backend.onrender.com/docs
 ---
 
 ## 🔄 Status Workflow
-
-```
 SUBMITTED  →  ASSIGNED  →  INSPECTED  →  RESOLVED
-    ↓              ↓             ↓
-  (Admin        (Admin        (Admin
-  rejects)      rejects)      rejects)
-    ↓              ↓             ↓
-  REJECTED      REJECTED      REJECTED
-```
+↓              ↓             ↓
+(Admin        (Admin        (Admin
+rejects)      rejects)      rejects)
+↓              ↓             ↓
+REJECTED      REJECTED      REJECTED
 
 ---
 
@@ -163,8 +166,6 @@ SUBMITTED  →  ASSIGNED  →  INSPECTED  →  RESOLVED
 ---
 
 ## 🏗️ Project Structure
-
-```
 kanpur_pothole_tracker/
 ├── app/
 │   ├── main.py              ← FastAPI entry point
@@ -188,7 +189,14 @@ kanpur_pothole_tracker/
 │   │   └── analytics.py     ← Dashboard + CSV export
 │   └── seed/
 │       └── seed_data.py     ← 27 Kanpur complaints
+├── frontend/
+│   ├── index.html           ← Login page
+│   ├── admin.html           ← Admin dashboard
+│   ├── citizen.html         ← Citizen portal
+│   ├── inspector.html       ← Inspector panel
+│   ├── app.js               ← Frontend logic
+│   └── style.css            ← Styles
 ├── alembic/                 ← DB migrations
 ├── requirements.txt
 └── .env
-```
+
