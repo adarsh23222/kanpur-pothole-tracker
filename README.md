@@ -1,8 +1,8 @@
 # 🚧 Kanpur Pothole Tracker
 ### Civic Complaint Management System — BCA Final Year Project
 
-> **Developed by:** [Your Name] | BCA Final Year  
-> **College:** [Your College Name]  
+> **Developed by:** Adarsh Pal | BCA Final Year  
+> **College:** PSIT College Of Higher Education  Kanpur
 > **Tech Stack:** FastAPI + PostgreSQL + SQLAlchemy + JWT
 
 ---
