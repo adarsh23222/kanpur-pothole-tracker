@@ -166,6 +166,8 @@ REJECTED      REJECTED      REJECTED
 ---
 
 ## 🏗️ Project Structure
+
+```
 kanpur_pothole_tracker/
 ├── app/
 │   ├── main.py              ← FastAPI entry point
@@ -199,4 +201,4 @@ kanpur_pothole_tracker/
 ├── alembic/                 ← DB migrations
 ├── requirements.txt
 └── .env
-
+```
