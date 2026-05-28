@@ -80,7 +80,7 @@ uvicorn app.main:app --reload --port 8000
 
 ### Step 9: Swagger UI Open Karo
 ```
-http://localhost:8000/docs
+https://kanpur-pothole-backend.onrender.com/docs
 ```
 
 ---
@@ -89,7 +89,7 @@ http://localhost:8000/docs
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@kanpurnagarnigam.in | admin123 |
+| Admin | adarsh2430343@gmail.com | admin123 |
 | Inspector | rajesh.inspector@kanpur.gov.in | inspector123 |
 | Inspector | sunil.inspector@kanpur.gov.in | inspector123 |
 | Inspector | meena.inspector@kanpur.gov.in | inspector123 |
