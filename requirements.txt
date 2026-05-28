@@ -11,4 +11,4 @@ pydantic-settings==2.2.1
 python-dotenv==1.0.1
 pandas==2.2.2
 cloudinary==1.36.0
-"gunicorn" 
+gunicorn
