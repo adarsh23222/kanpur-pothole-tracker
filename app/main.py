@@ -28,10 +28,15 @@ Kanpur Nagar Nigam — Pothole Complaint Management System
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+    "https://kanpur-pothole-tracker.vercel.app",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    "http://localhost:3000",
+],
+allow_credentials=True,
+allow_methods=["*"],
+allow_headers=["*"],
 )
 
 app.include_router(auth.router)
