@@ -2,7 +2,7 @@
 // KANPUR POTHOLE TRACKER — Core Utilities
 // ================================================
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://kanpur-pothole-backend.onrender.com";
 
 // ---- AUTH ----
 const getToken = () => localStorage.getItem("token");
