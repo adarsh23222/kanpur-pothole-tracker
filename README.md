@@ -39,16 +39,7 @@ Kanpur Nagar Nigam ke liye ek pothole complaint management system jisme:
 
 ---
 
-## 🔑 Login Credentials
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@kanpurnagarnigam.in | admin123 |
-| Inspector | rajesh.inspector@kanpur.gov.in | inspector123 |
-| Inspector | sunil.inspector@kanpur.gov.in | inspector123 |
-| Inspector | meena.inspector@kanpur.gov.in | inspector123 |
-| Citizen | priya.singh@gmail.com | citizen123 |
-| Citizen | ramesh.mishra@yahoo.com | citizen123 |
 
 ---
 
